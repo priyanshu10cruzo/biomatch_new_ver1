@@ -33,14 +33,14 @@ def main(data,mod):
 
 	# image = sharp_mask(image)
 
-# image = imge.copy()
+	# image = imge.copy()
 
 	# imge= cv2.flip(imge,1)
 
 	print("Hello")
 
-	masked_image = return_masked_image(imge,0.1)
-	masked_image = masked_image.astype(np.uint8)
+	#masked_image = return_masked_image(imge,0.1)
+	#masked_image = masked_image.astype(np.uint8)
 
 	if(mod==2):
 		masked_1 = cv2.cvtColor(masked_image, cv2.COLOR_BGR2GRAY)
@@ -66,7 +66,7 @@ def main(data,mod):
 			final_image = image_enhancer.enhance(thresholded_image1.astype(np.uint8))
 			print("ENHANCE DONE")
 
-	# final_image = thresholded_image1.astype(np.uint8)
+		# final_image = thresholded_image1.astype(np.uint8)
 		except:
 			print("ERROR!!!NO PROBLEM")
 			final_image = thresholded_image1.astype(np.uint8)
@@ -111,38 +111,145 @@ def main(data,mod):
 		print("Gabor Filter Ended")
 		final_image= enhanced_image
 
+elif(mod==11):
+# Segment image from background with MiniBatch K-means
+im = imge
+mask, masked_image = return_masked_image(im, 0.1)
+
+# Apply adaptive histogram equalization for contrast enhancement
+img2 = adaptive_hist_equalize(masked_image)
+
+# Apply adaptive mean thresholding
+th_image = apply_adaptive_mean_thresholding(img2, "MEAN", 15, 1)
+
+# Apply grayscale inversion, outer edge removal, mirroring
+inv_img = 255-th_image
+inv_img[mask==0] = 255
+final_image = remove_outer_edge(cv2.flip(inv_img,1))
 
 
-	else:
-		masked_1 = cv2.cvtColor(masked_image, cv2.COLOR_BGR2GRAY)
-		kernel2 = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
-		sobelx1 = cv2.Sobel(masked_1,cv2.CV_8U,1,0,ksize=5)  # x
-		sobely1 = cv2.Sobel(masked_1,cv2.CV_8U,0,1,ksize=5)  # y
-		sobelxy1 = cv2.addWeighted(sobelx1, 0.5, sobely1, 0.5,0)
-		sobelxy1 = cv2.filter2D(src= sobelxy1, ddepth=-1, kernel=kernel2)
-		final_image = sobelxy1
+else:
+masked_1 = cv2.cvtColor(masked_image, cv2.COLOR_BGR2GRAY)
+kernel2 = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+sobelx1 = cv2.Sobel(masked_1,cv2.CV_8U,1,0,ksize=5)  # x
+sobely1 = cv2.Sobel(masked_1,cv2.CV_8U,0,1,ksize=5)  # y
+sobelxy1 = cv2.addWeighted(sobelx1, 0.5, sobely1, 0.5,0)
+sobelxy1 = cv2.filter2D(src= sobelxy1, ddepth=-1, kernel=kernel2)
+final_image = sobelxy1
 
 
-	# masked_image = masked_image.astype(np.uint8)
-	# masked_1 = cv2.flip(masked_image, 1)
-	# masked_1 = masked_image.copy()
+# masked_image = masked_image.astype(np.uint8)
+# masked_1 = cv2.flip(masked_image, 1)
+# masked_1 = masked_image.copy()
 
 
-	# image_enhancer = FingerprintImageEnhancer()
-	#
-	# thresholded_image1 = apply_adaptive_mean_thresholding(masked_1,"GAUSSIAN",11,1)
-	#
-	# final_image = image_enhancer.enhance(thresholded_image1.astype(np.uint8))
+# image_enhancer = FingerprintImageEnhancer()
+#
+# thresholded_image1 = apply_adaptive_mean_thresholding(masked_1,"GAUSSIAN",11,1)
+#
+# final_image = image_enhancer.enhance(thresholded_image1.astype(np.uint8))
 
 
-	# thresholded_image1 = cv2.flip(thresholded_image1, 1)
-	# pil_im = Image.fromarray(cv2.cvtColor(enhanced_image1, cv2.COLOR_BGR2RGB))
+# thresholded_image1 = cv2.flip(thresholded_image1, 1)
+# pil_im = Image.fromarray(cv2.cvtColor(enhanced_image1, cv2.COLOR_BGR2RGB))
 
-	pil_im = Image.fromarray(final_image)
-	buff = io.BytesIO()
-	pil_im.save(buff,format="PNG")
-	img_str = base64.b64encode(buff.getvalue())
-	return ""+str(img_str,'utf-8')
+pil_im = Image.fromarray(final_image)
+buff = io.BytesIO()
+pil_im.save(buff,format="PNG")
+img_str = base64.b64encode(buff.getvalue())
+return ""+str(img_str,'utf-8')
+
+def return_masked_image(image, spatial_weight):
+	'''
+    Function to perform MiniBatch K-means based fingerprint image background removal.
+    :param image: RGB image numpy array of shape (H,W,3)
+    :param spatial_weight: spatial weight parameter used for minibatch K-means segmentation
+    '''
+	dim1, dim2 = image.shape[:2]
+
+	a = np.linspace(1, dim2, dim2)
+	b = np.linspace(1, dim1, dim1)
+	xb, xa = np.meshgrid(a, b)
+
+	image_convert = cv2.cvtColor(image, cv2.COLOR_BGR2YCR_CB)
+	image_convert_concat = np.concatenate((image_convert, xb[:, :, np.newaxis], xa[:, :, np.newaxis]), axis=2)
+
+	image_convert_reshape = image_convert_concat.reshape((dim1 * dim2, 5))
+	image_convert_reshape_mean = np.mean(image_convert_reshape, axis=0)
+	image_convert_reshape_sd = np.std(image_convert_reshape, axis=0)
+
+	image_convert_reshape = (image_convert_reshape - image_convert_reshape_mean) / image_convert_reshape_sd
+	image_convert_reshape[:, 3] = spatial_weight * image_convert_reshape[:, 3]
+	image_convert_reshape[:, 4] = spatial_weight * image_convert_reshape[:, 4]
+
+	kmeans = MiniBatchKMeans(n_clusters=2, init='k-means++', n_init=3).fit(image_convert_reshape)
+	mask = kmeans.labels_.reshape((dim1, dim2, 1))
+	if mask[int(dim1/2), int(dim2/2), 0] == 0:
+		mask = 1 - mask
+
+	masked_image = np.multiply(image, mask).astype(np.uint8)
+
+	return mask.reshape((dim1,dim2)), masked_image
+
+
+def apply_adaptive_mean_thresholding(image,method="GAUSSIAN",block_size=7,subtraction_const=1):
+	"""
+    Function to apply adaptive mean thersholding to extract fingerprint edges.
+    NOTE: block size must be an odd number
+    :param image: Grayscale image numpy array of shape (H,W)
+    :param method: Can be "MEAN" or "GAUSSIAN: for adaptive mean and gaussian thresholding respectively
+    :param block_size: Neighbourhood size taken for adaptive thresholding. Must be odd int
+    :param subtraction_const: subtraction constant used for cv2.adaptiveThreshold. Must be int
+    """
+
+	image_gray = cv2.cvtColor((image*255).astype(np.uint8), cv2.COLOR_BGR2GRAY)
+	if method == "GAUSSIAN":
+		thresholded_image = cv2.adaptiveThreshold(image_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+												  cv2.THRESH_BINARY, block_size, subtraction_const)
+
+	elif method == "MEAN":
+		thresholded_image = cv2.adaptiveThreshold(image_gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+												  cv2.THRESH_BINARY, block_size, subtraction_const)
+
+	else: print("Wrong method name used!"); return;
+
+	return thresholded_image
+
+def remove_outer_edge(edge_img):
+	'''
+    Returns the binarized contactless fingerprint image with its outer edge removed. Done in order to avoid being classified
+    as a fake fingerprint by the fingerprint minutae extraction SDK
+    :param edge_img: binary image numpy array of shape (H,W)
+    '''
+	# Check if image is black and white
+	if len(edge_img.shape) != 2:
+		edge_img = cv2.cvtColor(edge_img,cv2.COLOR_BGR2GRAY)
+
+	# Binarize image if it' not already binarized
+	_,edge_img = cv2.threshold(edge_img,150,255,cv2.THRESH_BINARY)
+
+	# Pad the image with white pixels
+	padded_image = 255*np.ones((edge_img.shape[0]+40,edge_img.shape[1]+40),dtype=np.uint8)
+	padded_image[20:-20,20:-20] = edge_img
+
+	# Apply successive erosion and dilation to extract black mask on white background for the fingerprint and exclude some region
+	kernel = np.ones((5,5),dtype = np.uint8)
+	mask = cv2.dilate(cv2.erode(padded_image, kernel, iterations = 3), kernel, iterations = 8)[20:-20,20:-20]
+
+	# Remove outer edge from original image using this mask
+	new_edge = (1-mask/255)*edge_img
+	new_edge[mask==255] = 255 # Make pixels outside the fingerprint white
+	return new_edge
+
+def adaptive_hist_equalize(masked_image):
+	hist, bins = np.histogram(masked_image.flatten(), 256, [0, 256])
+	cdf = hist.cumsum()
+	cdf_normalized = cdf * hist.max() / cdf.max()
+	cdf_m = np.ma.masked_equal(cdf, 0)
+	cdf_m = (cdf_m - cdf_m.min()) * 255 / (cdf_m.max() - cdf_m.min())
+	cdf = np.ma.filled(cdf_m, 0).astype('uint8')
+	img2 = cdf[masked_image]
+	return img2
 
 def getpixel(data):
 	decodedData = base64.b64decode(data)
@@ -156,15 +263,15 @@ def getpixel(data):
 	for i in range(200):
 		for j in range(200):
 			# for k in range(3):
-				le+=1
-				if(i==199 and j==199):
-					ans+=str(anc_img[i][j])
-				else:
-					ans+=str(anc_img[i][j])+" "
+			le+=1
+			if(i==199 and j==199):
+				ans+=str(anc_img[i][j])
+			else:
+				ans+=str(anc_img[i][j])+" "
 
-			# print(f"{str(anc_img[i][j][0])}\t{str(anc_img[i][j][1])}\t{str(anc_img[i][j][2])}")
+	# print(f"{str(anc_img[i][j][0])}\t{str(anc_img[i][j][1])}\t{str(anc_img[i][j][2])}")
 
-		# print("\n\n")
+	# print("\n\n")
 	# print(le)
 
 	return ans
@@ -712,7 +819,7 @@ class FingerprintImageEnhancer(object):
 		# self.angleInc = 3
 		# self.ridge_filter_thresh = -3
 
-#above values for siamese + scat model
+		#above values for siamese + scat model
 		self.ridge_segment_blksze = 32
 		self.ridge_segment_thresh = 0.1
 		self.gradient_sigma = 1
@@ -1070,7 +1177,7 @@ class FingerprintFeatureExtractor(object):
 
 		self._mask = convex_hull_image(self._mask > 0)
 		self._mask = erosion(self._mask, square(5))  # Structuing element for mask erosion = square(5)
-		# self.minutiaeTerm = np.uint8(self._mask) * self.minutiaeTerm
+	# self.minutiaeTerm = np.uint8(self._mask) * self.minutiaeTerm
 
 	def __removeSpuriousMinutiae(self, minutiaeList, img):
 		img = img * 0
@@ -1174,7 +1281,7 @@ class FingerprintFeatureExtractor(object):
 			(rr, cc) = skimage.draw.circle_perimeter(row, col, 3)
 			skimage.draw.set_color(DispImg, (rr, cc), (255, 0, 0))
 
-		# cv2.imwrite('result.png', DispImg)
+# cv2.imwrite('result.png', DispImg)
 
 def extract_minutiae_features(img, spuriousMinutiaeThresh, invertImage, showResult, saveResult):
 	feature_extractor = FingerprintFeatureExtractor()

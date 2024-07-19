@@ -176,7 +176,7 @@ class MainActivity : AppCompatActivity() {
         val py = Python.getInstance()
         val pyObj = py.getModule("myscript")
         val imageStr = getStringImage(croppedBitmap)
-        val obj = pyObj.callAttr("main", imageStr, 3)
+        val obj = pyObj.callAttr("main", imageStr, 11)
         val imgStr = obj.toString()
         val data = Base64.decode(imgStr, Base64.DEFAULT)
         return BitmapFactory.decodeByteArray(data, 0, data.size)
