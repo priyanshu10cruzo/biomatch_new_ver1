@@ -61,6 +61,8 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.activity:activity:1.9.0'
+
 
     //Dependencies for CameraX
     def camerax_version = "1.1.0"

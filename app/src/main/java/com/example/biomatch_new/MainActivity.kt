@@ -13,7 +13,12 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.*
+import androidx.camera.core.CameraControl
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
@@ -23,7 +28,8 @@ import com.chaquo.python.android.AndroidPlatform
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -33,7 +39,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var previewView: PreviewView
     private lateinit var overlayBox: View
     private lateinit var imageCapture: ImageCapture
-    private lateinit var cameraControl: CameraControl
+    private lateinit var cameraControl:  CameraControl
     private var isFlashOn = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -131,9 +137,9 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
-                    val croppedBitmap = cropBitmap(bitmap)
-                    val processedBitmap = preprocessImage(croppedBitmap)
-
+                   // val croppedBitmap = cropBitmap(bitmap)
+                    val processedBitmap = preprocessImage(bitmap)
+                    println(processedBitmap)
                     runOnUiThread {
                         overlayBox.background = BitmapDrawable(resources, processedBitmap)
                     }
