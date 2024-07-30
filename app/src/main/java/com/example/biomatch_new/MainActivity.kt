@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
+import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -20,6 +21,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
+import kotlinx.coroutines.yield
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
@@ -49,8 +51,8 @@ class MainActivity : AppCompatActivity() {
 
         previewView = findViewById(R.id.previewView)
         overlayBox = findViewById(R.id.overlay_box)
-        val captureButton: Button = findViewById(R.id.capture_button)
-        val flashToggleButton: Button = findViewById(R.id.flash_toggle_button)
+//        val captureButton: Button = findViewById(R.id.capture_button)
+        val flashToggleButton: ImageButton = findViewById(R.id.flashImageView)
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         if (allPermissionsGranted()) {
@@ -61,9 +63,9 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        captureButton.setOnClickListener {
-            capturePhoto()
-        }
+//        captureButton.setOnClickListener {
+//            capturePhoto()
+//        }
 
         flashToggleButton.setOnClickListener {
             isFlashOn = !isFlashOn
@@ -110,10 +112,12 @@ class MainActivity : AppCompatActivity() {
                         if (luma < brightnessThreshold) {
                             runOnUiThread {
                                 imageCapture.flashMode = ImageCapture.FLASH_MODE_ON
+                                capturePhoto()
                             }
                         } else {
                             runOnUiThread {
                                 imageCapture.flashMode = if (isFlashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
+                                capturePhoto()
                             }
                         }
                     })
@@ -151,8 +155,8 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
-                    // val croppedBitmap = cropBitmap(bitmap)
-                    val processedBitmap = preprocessImage(bitmap)
+                    val croppedBitmap = cropBitmap(bitmap)
+                    val processedBitmap = preprocessImage(croppedBitmap)
                     println(processedBitmap)
                     runOnUiThread {
                         overlayBox.background = BitmapDrawable(resources, processedBitmap)
