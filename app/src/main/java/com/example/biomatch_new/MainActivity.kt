@@ -13,12 +13,14 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import kotlinx.coroutines.yield
@@ -156,12 +158,18 @@ class MainActivity : AppCompatActivity() {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
                     val croppedBitmap = cropBitmap(bitmap)
-                    val processedBitmap = preprocessImage(croppedBitmap)
-                    println(processedBitmap)
+                    val processedBitmapp = preprocessImagee(croppedBitmap)
+                    if (processedBitmapp == 12)
+                    {
+                        Toast.makeText(this@MainActivity,"Image not upto mark,Retake!",Toast.LENGTH_LONG).show()
+                    }
+                    else
+                    {val processedBitmap = preprocessImage(croppedBitmap)
+//                    println(processedBitmapp)
                     runOnUiThread {
                         overlayBox.background = BitmapDrawable(resources, processedBitmap)
                     }
-                }
+                }}
             })
     }
 
@@ -195,6 +203,18 @@ class MainActivity : AppCompatActivity() {
         val imgByte = baos.toByteArray()
         return Base64.encodeToString(imgByte, Base64.DEFAULT)
     }
+    private fun preprocessImagee(croppedBitmap: Bitmap?): Int {
+        val py = Python.getInstance()
+        val pyObj = py.getModule("myscript2")
+        val imageStr = getStringImage(croppedBitmap)
+        val obj = pyObj.callAttr("main", imageStr)
+        val objj = obj.toInt()
+        return objj
+//        val imgStr = obj.toString()
+//        val data = Base64.decode(imgStr, Base64.DEFAULT)
+//        return BitmapFactory.decodeByteArray(data, 0, data.size)
+    }
+
 
     private fun preprocessImage(croppedBitmap: Bitmap?): Bitmap? {
         val py = Python.getInstance()
