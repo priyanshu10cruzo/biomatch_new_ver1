@@ -35,13 +35,13 @@ import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var cameraExecutor: ExecutorService
-    private lateinit var previewView: PreviewView
-    private lateinit var overlayBox: View
-    private lateinit var imageCapture: ImageCapture
-    private lateinit var cameraControl: CameraControl
-    private var isFlashOn = false
-    private var brightnessThreshold = 100.0
+    lateinit var cameraExecutor: ExecutorService
+    lateinit var previewView: PreviewView
+    lateinit var overlayBox: View
+    lateinit var imageCapture: ImageCapture
+    lateinit var cameraControl: CameraControl
+    var isFlashOn = false
+    var brightnessThreshold = 100.0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,13 +87,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
+    fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
             baseContext, it
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun startCamera() {
+    fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
@@ -139,7 +139,7 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun capturePhoto() {
+    fun capturePhoto() {
         val photoFile = createFile(
             baseContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES),
             FILENAME,
@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity() {
             })
     }
 
-    private fun cropBitmap(bitmap: Bitmap): Bitmap {
+    fun cropBitmap(bitmap: Bitmap): Bitmap {
         val box = overlayBox
         val scaleX = bitmap.width.toFloat() / previewView.width.toFloat()
         val scaleY = bitmap.height.toFloat() / previewView.height.toFloat()
@@ -191,19 +191,19 @@ class MainActivity : AppCompatActivity() {
         return Bitmap.createBitmap(bitmap, safeLeft, safeTop, safeWidth, safeHeight)
     }
 
-    private fun createFile(baseFolder: File?, format: String, extension: String): File {
+    fun createFile(baseFolder: File?, format: String, extension: String): File {
         val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val imageFileName = "${format}_${timeStamp}.$extension"
         return File(baseFolder, imageFileName)
     }
 
-    private fun getStringImage(bitmap: Bitmap?): String? {
+    fun getStringImage(bitmap: Bitmap?): String? {
         val baos = ByteArrayOutputStream()
         bitmap?.compress(Bitmap.CompressFormat.PNG, 100, baos)
         val imgByte = baos.toByteArray()
         return Base64.encodeToString(imgByte, Base64.DEFAULT)
     }
-    private fun preprocessImagee(croppedBitmap: Bitmap?): Int {
+    fun preprocessImagee(croppedBitmap: Bitmap?): Int {
         val py = Python.getInstance()
         val pyObj = py.getModule("myscript2")
         val imageStr = getStringImage(croppedBitmap)
@@ -216,7 +216,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun preprocessImage(croppedBitmap: Bitmap?): Bitmap? {
+    fun preprocessImage(croppedBitmap: Bitmap?): Bitmap? {
         val py = Python.getInstance()
         val pyObj = py.getModule("myscript")
         val imageStr = getStringImage(croppedBitmap)
@@ -239,7 +239,7 @@ class MainActivity : AppCompatActivity() {
         cameraExecutor.shutdown()
     }
 
-    private class LuminosityAnalyzer(private val listener: (Double) -> Unit) : ImageAnalysis.Analyzer {
+    class LuminosityAnalyzer(private val listener: (Double) -> Unit) : ImageAnalysis.Analyzer {
         override fun analyze(image: ImageProxy) {
             val buffer = image.planes[0].buffer
             val data = buffer.toByteArray()
@@ -249,7 +249,7 @@ class MainActivity : AppCompatActivity() {
             image.close()
         }
 
-        private fun ByteBuffer.toByteArray(): ByteArray {
+        fun ByteBuffer.toByteArray(): ByteArray {
             rewind()    // Rewind the buffer to zero
             val data = ByteArray(remaining())
             get(data)   // Copy the buffer into a byte array
