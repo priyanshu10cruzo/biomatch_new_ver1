@@ -1,12 +1,19 @@
 package com.example.biomatch_new
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.graphics.YuvImage
 import android.graphics.drawable.BitmapDrawable
+import android.media.Image
+import android.media.ImageReader
 import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
 import android.view.MotionEvent
@@ -23,6 +30,7 @@ import androidx.core.content.ContextCompat
 import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
+import com.example.YOLOIntegration.YOLOv8Analyzer
 import kotlinx.coroutines.yield
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -32,6 +40,11 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import org.tensorflow.lite.Interpreter
+import java.io.ByteArrayInputStream
+import java.io.FileInputStream
+import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
 
 class MainActivity : AppCompatActivity() {
 
@@ -40,12 +53,15 @@ class MainActivity : AppCompatActivity() {
     lateinit var overlayBox: View
     lateinit var imageCapture: ImageCapture
     lateinit var cameraControl: CameraControl
+    lateinit var tflite: Interpreter
     var isFlashOn = false
     var brightnessThreshold = 100.0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        tflite = Interpreter(loadModelFile("best_float32.tflite"))
 
         if (!Python.isStarted()) {
             Python.start(AndroidPlatform(this))
@@ -146,31 +162,75 @@ class MainActivity : AppCompatActivity() {
             PHOTO_EXTENSION
         )
 
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+//        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+        val imageCapture = imageCapture ?: return
 
         imageCapture.takePicture(
-            outputOptions, ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageSavedCallback {
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageCapturedCallback(){
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    processImage(image)
+                }
                 override fun onError(exc: ImageCaptureException) {
                     Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
                 }
 
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
-                    val croppedBitmap = cropBitmap(bitmap)
-                    val processedBitmapp = preprocessImagee(croppedBitmap)
-                    if (processedBitmapp == 12)
+//                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+//                    val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
+//                    val croppedBitmap = cropBitmap(bitmap)
+//                    val processedBitmapp = preprocessImagee(croppedBitmap)
+//                    if (processedBitmapp == 12)
+//                    {
+//                        Toast.makeText(this@MainActivity,"Image not upto mark,Retake!",Toast.LENGTH_LONG).show()
+//                    }
+//                    else
+//                    {val processedBitmap = preprocessImage(croppedBitmap)
+////                    println(processedBitmapp)
+//                    runOnUiThread {
+//                        overlayBox.background = BitmapDrawable(resources, processedBitmap)
+//                    }
+//                }}
+            })
+    }
+    fun processImage(image: ImageProxy){
+        val yoloAnalyzer = YOLOv8Analyzer(tflite) { processedBitmap, results ->
+            val pBitmap = preprocessImagee(processedBitmap)
+            if (pBitmap == 12)
                     {
                         Toast.makeText(this@MainActivity,"Image not upto mark,Retake!",Toast.LENGTH_LONG).show()
                     }
                     else
-                    {val processedBitmap = preprocessImage(croppedBitmap)
+                    {val preprocessedBitmap = preprocessImage(processedBitmap)
+                        saveProcessedImage(preprocessedBitmap)
+                        saveProcessedImage(processedBitmap)
 //                    println(processedBitmapp)
                     runOnUiThread {
-                        overlayBox.background = BitmapDrawable(resources, processedBitmap)
+                        overlayBox.background = BitmapDrawable(resources, preprocessedBitmap)
                     }
-                }}
-            })
+                }
+        }
+        yoloAnalyzer.analyze(image)
+    }
+
+    fun saveProcessedImage(bitmap: Bitmap) {
+        val filename = "processed_image_${System.currentTimeMillis()}.jpg"
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            if (android.os.Build.VERSION.SDK_INT > android.os.Build.VERSION_CODES.P) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/YOLOApp")
+            }
+        }
+        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        uri?.let {
+            contentResolver.openOutputStream(it)?.use { outputStream ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+            }
+            Log.d(TAG, "Image saved successfully: $filename")
+            runOnUiThread {
+                Toast.makeText(this, "Processed image saved: $filename", Toast.LENGTH_SHORT).show()
+            }
+        }?: Log.e(TAG, "Failed to create new MediaStore record.")
     }
 
     fun cropBitmap(bitmap: Bitmap): Bitmap {
@@ -215,8 +275,17 @@ class MainActivity : AppCompatActivity() {
 //        return BitmapFactory.decodeByteArray(data, 0, data.size)
     }
 
+    fun loadModelFile(filename: String): MappedByteBuffer {
+        val fileDescriptor = assets.openFd(filename)
+        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
+        val fileChannel = inputStream.channel
+        val startOffset = fileDescriptor.startOffset
+        val declaredLength = fileDescriptor.declaredLength
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+    }
 
-    fun preprocessImage(croppedBitmap: Bitmap?): Bitmap? {
+
+    fun preprocessImage(croppedBitmap: Bitmap?): Bitmap {
         val py = Python.getInstance()
         val pyObj = py.getModule("myscript")
         val imageStr = getStringImage(croppedBitmap)
