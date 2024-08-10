@@ -153,7 +153,7 @@ class YOLOv8Analyzer(
 
         for (i in 0 until num_boxes) {
             val confidence = output[6][i] //val confidence = output[6][i * (NUM_CLASSES + 7) + 6]
-            Log.d(TAG, "Box $i: x=${output[0][i]}, y=${output[1][i]}, w=${output[2][i]}, h=${output[3][i]}, conf=$confidence")
+//            Log.d(TAG, "Box $i: x=${output[0][i]}, y=${output[1][i]}, w=${output[2][i]}, h=${output[3][i]}, conf=$confidence")
             if (confidence > CONFIDENCE_THRESHOLD) {
 //                val x = output[0][i * (NUM_CLASSES + 5) + 0]
 //                val y = output[0][i * (NUM_CLASSES + 5) + 1]

@@ -46,6 +46,8 @@ import java.io.FileInputStream
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
+var hasTAkenPhoto = false
+
 class MainActivity : AppCompatActivity() {
 
     lateinit var cameraExecutor: ExecutorService
@@ -131,11 +133,13 @@ class MainActivity : AppCompatActivity() {
                             runOnUiThread {
                                 imageCapture.flashMode = ImageCapture.FLASH_MODE_ON
                                 capturePhoto()
+                                onDestroy()
                             }
                         } else {
                             runOnUiThread {
                                 imageCapture.flashMode = if (isFlashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
                                 capturePhoto()
+                                onDestroy()
                             }
                         }
                     })
