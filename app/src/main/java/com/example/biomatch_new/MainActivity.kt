@@ -2,6 +2,7 @@ package com.example.biomatch_new
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -47,6 +48,7 @@ import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
 var hasTAkenPhoto = false
+var i = 0
 
 class MainActivity : AppCompatActivity() {
 
@@ -133,19 +135,20 @@ class MainActivity : AppCompatActivity() {
                             runOnUiThread {
                                 imageCapture.flashMode = ImageCapture.FLASH_MODE_ON
                                 capturePhoto()
-                                onDestroy()
+//                                onDestroy()
                             }
                         } else {
                             runOnUiThread {
                                 imageCapture.flashMode = if (isFlashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
                                 capturePhoto()
-                                onDestroy()
+//                                onDestroy()
                             }
                         }
                     })
                 }
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
 
             try {
                 cameraProvider.unbindAll()
@@ -173,7 +176,10 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageCapturedCallback(){
                 override fun onCaptureSuccess(image: ImageProxy) {
+                    i++
                     processImage(image)
+//                    onDestroy()
+                    Log.d(TAG,"value of counter ${i}")
                 }
                 override fun onError(exc: ImageCaptureException) {
                     Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
@@ -207,10 +213,19 @@ class MainActivity : AppCompatActivity() {
                     {val preprocessedBitmap = preprocessImage(processedBitmap)
                         saveProcessedImage(preprocessedBitmap)
                         saveProcessedImage(processedBitmap)
-//                    println(processedBitmapp)
-                    runOnUiThread {
-                        overlayBox.background = BitmapDrawable(resources, preprocessedBitmap)
-                    }
+                        val bitmap: Bitmap = preprocessedBitmap
+                        val stream = ByteArrayOutputStream()
+                        bitmap.compress(Bitmap.CompressFormat.PNG,100,stream)
+                        val byteArray = stream.toByteArray()
+                        val intent = Intent(this ,MainActivity3::class.java)
+                        intent.putExtra("bitmap",byteArray)
+                        startActivity( intent)
+//                        hasTAkenPhoto = true
+//                        onDestroy()
+//                        Log.d(TAG, "processedBitmapp $preprocessedBitmap")
+//                    runOnUiThread {
+//                        overlayBox.background = BitmapDrawable(resources, preprocessedBitmap)
+//                    }
                 }
         }
         yoloAnalyzer.analyze(image)

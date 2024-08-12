@@ -1,3 +1,17 @@
+<!--<resources>-->
+<!--    <string name="app_name">YOLOIntegration</string>-->
+<!--</resources>-->
+
 <resources>
-    <string name="app_name">BioMatch_New</string>
+
+    <string name="app_name">mAadhaar Auth</string>
+
+    <string name="ENROLL">ENROLL</string>
+
+    <string name="update">Update</string>
+
+    <string name="AUTHENTICATE">AUTHENTICATE</string>
+
+    <string name="aadhaar_logo">Aadhaar Logo</string>
+
 </resources>
