@@ -14,6 +14,7 @@ import android.media.Image
 import android.media.ImageReader
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
 import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
@@ -47,23 +48,26 @@ import java.io.FileInputStream
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
-var hasTAkenPhoto = false
+var focus = false
 var i = 0
+
 
 class MainActivity : AppCompatActivity() {
 
     lateinit var cameraExecutor: ExecutorService
     lateinit var previewView: PreviewView
     lateinit var overlayBox: View
+//    lateinit var focusButton: Button
     lateinit var imageCapture: ImageCapture
     lateinit var cameraControl: CameraControl
     lateinit var tflite: Interpreter
     var isFlashOn = false
-    var brightnessThreshold = 100.0
+    var brightnessThreshold = 120.0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
 
         tflite = Interpreter(loadModelFile("best_float32.tflite"))
 
@@ -73,6 +77,7 @@ class MainActivity : AppCompatActivity() {
 
         previewView = findViewById(R.id.previewView)
         overlayBox = findViewById(R.id.overlay_box)
+//        focusButton = findViewById(R.id.focus)
 //        val captureButton: Button = findViewById(R.id.capture_button)
         val flashToggleButton: ImageButton = findViewById(R.id.flashImageView)
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -94,15 +99,25 @@ class MainActivity : AppCompatActivity() {
             imageCapture.flashMode = if (isFlashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
         }
 
+//        focusButton.setOnClickListener{
         previewView.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_DOWN) {
-                val factory = previewView.meteringPointFactory
-                val point = factory.createPoint(event.x, event.y)
-                val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF).build()
-                cameraControl.startFocusAndMetering(action)
-                true
-            } else {
-                false
+            focus = true
+            return@setOnTouchListener when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val factory = previewView.meteringPointFactory
+                    val point = factory.createPoint(event.x, event.y)
+                    val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF).apply {
+                        disableAutoCancel()
+                    }.build()
+                    cameraControl.startFocusAndMetering(action)
+                    true
+                }
+                else -> {
+                    false
+                }
             }
         }
     }
@@ -134,13 +149,19 @@ class MainActivity : AppCompatActivity() {
                         if (luma < brightnessThreshold) {
                             runOnUiThread {
                                 imageCapture.flashMode = ImageCapture.FLASH_MODE_ON
-                                capturePhoto()
+                                if (focus == true){
+                                    Handler().postDelayed({capturePhoto()},2000)
+                                    focus = false
+                                }
 //                                onDestroy()
                             }
                         } else {
                             runOnUiThread {
                                 imageCapture.flashMode = if (isFlashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
-                                capturePhoto()
+                                if (focus == true){
+                                    Handler().postDelayed({capturePhoto()},2000)
+                                    focus = false
+                                }
 //                                onDestroy()
                             }
                         }
@@ -212,7 +233,7 @@ class MainActivity : AppCompatActivity() {
                     else
                     {val preprocessedBitmap = preprocessImage(processedBitmap)
                         saveProcessedImage(preprocessedBitmap)
-                        saveProcessedImage(processedBitmap)
+//                        saveProcessedImage(processedBitmap)
                         val bitmap: Bitmap = preprocessedBitmap
                         val stream = ByteArrayOutputStream()
                         bitmap.compress(Bitmap.CompressFormat.PNG,100,stream)

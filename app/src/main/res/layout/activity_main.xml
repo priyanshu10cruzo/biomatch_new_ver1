@@ -13,6 +13,13 @@
         android:layout_height="match_parent"
         android:layout_centerInParent="true">
 
+<!--        <Button-->
+<!--            android:id="@+id/focus"-->
+<!--            android:layout_width="100dp"-->
+<!--            android:layout_height="50dp"-->
+<!--            android:layout_marginLeft="155dp"-->
+<!--            android:text="FOCUS"-->
+<!--            android:layout_marginTop="480dp" />-->
     </androidx.camera.view.PreviewView>
 <!--        app:layout_constraintBottom_toBottomOf="parent"-->
 <!--        app:layout_constraintEnd_toEndOf="parent"-->
@@ -22,9 +29,9 @@
         android:id="@+id/textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="BioMatch"
+        android:text="Tap within red box to focus...."
         android:textColor="#fbd7bd"
-        android:textSize="43sp"
+        android:textSize="30sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.498"
