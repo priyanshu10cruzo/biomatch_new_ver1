@@ -57,47 +57,65 @@ class MainActivity : AppCompatActivity() {
     lateinit var cameraExecutor: ExecutorService
     lateinit var previewView: PreviewView
     lateinit var overlayBox: View
-//    lateinit var focusButton: Button
+    //    lateinit var focusButton: Button
     lateinit var imageCapture: ImageCapture
     lateinit var cameraControl: CameraControl
     lateinit var tflite: Interpreter
     var isFlashOn = false
     var brightnessThreshold = 120.0
+//    private lateinit var permissionHandler: PermissionHandler
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+//        permissionHandler = PermissionHandler(this)
 
-        tflite = Interpreter(loadModelFile("best_float32.tflite"))
+//        if (permissionHandler.arePermissionsGranted(REQUIRED_PERMISSIONS)) {
+            previewView = findViewById<PreviewView>(R.id.previewView)
+            overlayBox = findViewById<View>(R.id.overlay_box)
+            tflite = Interpreter(loadModelFile("best_float32.tflite"))
+            val flashToggleButton: ImageButton = findViewById(R.id.flashImageView)
+            flashToggleButton.setOnClickListener {
+                isFlashOn = !isFlashOn
+                imageCapture.flashMode = if (isFlashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
+            }
+            cameraExecutor = Executors.newSingleThreadExecutor()
+            startCamera()
+////        } else {
+//            permissionHandler.requestPermissions(REQUIRED_PERMISSIONS, PermissionHandler.REQUEST_CODE_PERMISSIONS)
+//        }
+
+
+//        tflite = Interpreter(loadModelFile("best_float32.tflite"))
 
         if (!Python.isStarted()) {
             Python.start(AndroidPlatform(this))
         }
 
-        previewView = findViewById(R.id.previewView)
-        overlayBox = findViewById(R.id.overlay_box)
+//        previewView = findViewById(R.id.previewView)
+//        overlayBox = findViewById(R.id.overlay_box)
 //        focusButton = findViewById(R.id.focus)
 //        val captureButton: Button = findViewById(R.id.capture_button)
-        val flashToggleButton: ImageButton = findViewById(R.id.flashImageView)
-        cameraExecutor = Executors.newSingleThreadExecutor()
+//        val flashToggleButton: ImageButton = findViewById(R.id.flashImageView)
+//        cameraExecutor = Executors.newSingleThreadExecutor()
 
-        if (allPermissionsGranted()) {
-            startCamera()
-        } else {
-            ActivityCompat.requestPermissions(
-                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
-            )
-        }
+//        if (allPermissionsGranted()) {
+//            startCamera()
+//        } else {
+//            ActivityCompat.requestPermissions(
+//                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
+//            )
+//        }
 
 //        captureButton.setOnClickListener {
 //            capturePhoto()
 //        }
 
-        flashToggleButton.setOnClickListener {
-            isFlashOn = !isFlashOn
-            imageCapture.flashMode = if (isFlashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
-        }
+//        flashToggleButton.setOnClickListener {
+//            isFlashOn = !isFlashOn
+//            imageCapture.flashMode = if (isFlashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
+//        }
 
 //        focusButton.setOnClickListener{
         previewView.setOnTouchListener { _, event ->
@@ -122,11 +140,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(
-            baseContext, it
-        ) == PackageManager.PERMISSION_GRANTED
-    }
+//    fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
+//        ContextCompat.checkSelfPermission(
+//            baseContext, it
+//        ) == PackageManager.PERMISSION_GRANTED
+//    }
 
     fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -183,6 +201,28 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
+//    override fun onRequestPermissionsResult(
+//        requestCode: Int,
+//        permissions: Array<String>,
+//        grantResults: IntArray
+//    ) {
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+//
+//        permissionHandler.handleRequestPermissionsResult(
+//            requestCode,
+//            permissions,
+//            grantResults,
+//            onGranted = {
+//                // Permission granted, start the camera
+//                startCamera()
+//            },
+//            onDenied = {
+//                // Permission denied, show a message to the user
+//                Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT).show()
+//            }
+//        )
+//    }
+
     fun capturePhoto() {
         val photoFile = createFile(
             baseContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES),
@@ -227,27 +267,27 @@ class MainActivity : AppCompatActivity() {
         val yoloAnalyzer = YOLOv8Analyzer(tflite) { processedBitmap, results ->
             val pBitmap = preprocessImagee(processedBitmap)
             if (pBitmap == 12)
-                    {
-                        Toast.makeText(this@MainActivity,"Image not upto mark,Retake!",Toast.LENGTH_LONG).show()
-                    }
-                    else
-                    {val preprocessedBitmap = preprocessImage(processedBitmap)
-                        saveProcessedImage(preprocessedBitmap)
+            {
+                Toast.makeText(this@MainActivity,"Image not upto mark,Retake!",Toast.LENGTH_LONG).show()
+            }
+            else
+            {val preprocessedBitmap = preprocessImage(processedBitmap)
+                saveProcessedImage(preprocessedBitmap)
 //                        saveProcessedImage(processedBitmap)
-                        val bitmap: Bitmap = preprocessedBitmap
-                        val stream = ByteArrayOutputStream()
-                        bitmap.compress(Bitmap.CompressFormat.PNG,100,stream)
-                        val byteArray = stream.toByteArray()
-                        val intent = Intent(this ,MainActivity3::class.java)
-                        intent.putExtra("bitmap",byteArray)
-                        startActivity( intent)
+                val bitmap: Bitmap = preprocessedBitmap
+                val stream = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.PNG,100,stream)
+                val byteArray = stream.toByteArray()
+                val intent = Intent(this ,MainActivity3::class.java)
+                intent.putExtra("bitmap",byteArray)
+                startActivity( intent)
 //                        hasTAkenPhoto = true
 //                        onDestroy()
 //                        Log.d(TAG, "processedBitmapp $preprocessedBitmap")
 //                    runOnUiThread {
 //                        overlayBox.background = BitmapDrawable(resources, preprocessedBitmap)
 //                    }
-                }
+            }
         }
         yoloAnalyzer.analyze(image)
     }
@@ -336,11 +376,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val TAG = "CameraXApp"
-        private const val REQUEST_CODE_PERMISSIONS = 10
-        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
-        private const val FILENAME = "captured_image"
-        private const val PHOTO_EXTENSION = "jpg"
+        const val TAG = "CameraXApp"
+        const val REQUEST_CODE_PERMISSIONS = 10
+        val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+        const val FILENAME = "captured_image"
+        const val PHOTO_EXTENSION = "jpg"
     }
 
     override fun onDestroy() {
@@ -348,7 +388,7 @@ class MainActivity : AppCompatActivity() {
         cameraExecutor.shutdown()
     }
 
-    class LuminosityAnalyzer(private val listener: (Double) -> Unit) : ImageAnalysis.Analyzer {
+    class LuminosityAnalyzer(val listener: (Double) -> Unit) : ImageAnalysis.Analyzer {
         override fun analyze(image: ImageProxy) {
             val buffer = image.planes[0].buffer
             val data = buffer.toByteArray()
